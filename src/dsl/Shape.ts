@@ -218,6 +218,17 @@ export type ShadowSpec = {
   offsetY?: number | NumberAnimSpec;
 };
 
+export type AnchorSpec =
+  | 'center'
+  | 'top'
+  | 'bottom'
+  | 'left'
+  | 'right'
+  | 'topLeft'
+  | 'topRight'
+  | 'bottomLeft'
+  | 'bottomRight';
+
 export type MorphSpec = {
   from: any;
   to: any;
@@ -227,7 +238,7 @@ export type MorphSpec = {
   delay?: number;
   repeatDelay?: number;
   ease?: EaseSpec;
-  anchor?: 'center' | 'top' | 'bottom' | 'left' | 'right' | 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight';
+  lock?: AnchorSpec;
 };
 
 export type ClipSpec = ShapeBuilder | ShapeBuilder[];
@@ -259,7 +270,7 @@ export type Modifier =
   | { type: 'timeScale'; spec: number }
   | { type: 'morph'; spec: MorphSpec }
   | { type: 'trim'; spec: TrimSpec }
-  | { type: 'anchor'; spec: MorphSpec['anchor'] }
+  | { type: 'anchor'; spec: AnchorSpec }
   | { type: 'clip'; spec: ClipSpec }
   | { type: 'textPath'; spec: TextPathSpec };
 
@@ -345,7 +356,7 @@ export type ShapeInstance = {
   opacity: number;
   zIndex: number;
   transform: { x: number; y: number; scale: number; rotation: number; scaleX: number; scaleY: number; skewX: number; skewY: number };
-  anchor?: MorphSpec['anchor'];
+  anchor?: AnchorSpec;
   trim?: TrimSpec;
   clip?: ShapeInstance[];
   stroke?: {
@@ -483,7 +494,7 @@ export class ShapeBuilder {
     return this.cloneWith({ type: 'at', spec: pos });
   }
 
-  anchor(anchor: MorphSpec['anchor']): ShapeBuilder {
+  anchor(anchor: AnchorSpec): ShapeBuilder {
     return this.cloneWith({ type: 'anchor', spec: anchor });
   }
 
@@ -519,7 +530,7 @@ export class ShapeBuilder {
     from: any,
     to: any,
     duration: number,
-    options: { start?: TimeRef; loop?: boolean; delay?: number; repeatDelay?: number; ease?: EaseSpec; anchor?: MorphSpec['anchor'] } = {}
+    options: { start?: TimeRef; loop?: boolean; delay?: number; repeatDelay?: number; ease?: EaseSpec; lock?: MorphSpec['lock'] } = {}
   ): ShapeBuilder {
     return this.cloneWith({
       type: 'morph',
@@ -532,7 +543,7 @@ export class ShapeBuilder {
         delay: options.delay,
         repeatDelay: options.repeatDelay,
         ease: options.ease,
-        anchor: options.anchor,
+        lock: options.lock,
       },
     });
   }
@@ -660,7 +671,7 @@ function evaluateBuilder(builder: ShapeBuilder, time: number): ShapeInstance {
   let timeScale = 1;
   let morphOffsetX = 0;
   let morphOffsetY = 0;
-  let anchor: MorphSpec['anchor'] | undefined;
+  let anchor: AnchorSpec | undefined;
   let clip: ShapeInstance[] | undefined;
   let lastPathAngle: number | undefined;
   let stroke:
@@ -1281,10 +1292,10 @@ function evaluateBuilder(builder: ShapeBuilder, time: number): ShapeInstance {
           const h = lerp(from.height, to.height, t);
           geom.width = w;
           geom.height = h;
-          if (spec.anchor && spec.anchor !== 'center') {
+          if (spec.lock && spec.lock !== 'center') {
             const dw = w - from.width;
             const dh = h - from.height;
-            const offset = anchorOffset(spec.anchor, dw, dh);
+            const offset = anchorOffset(spec.lock, dw, dh);
             morphOffsetX += offset.x;
             morphOffsetY += offset.y;
           }
@@ -1749,7 +1760,7 @@ function segmentForKeyframes<T extends { time: number }>(
 }
 
 function anchorOffset(
-  anchor: MorphSpec['anchor'],
+  anchor: AnchorSpec,
   dw: number,
   dh: number
 ): { x: number; y: number } {
