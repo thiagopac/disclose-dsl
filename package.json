@@ -22,7 +22,7 @@
   ],
   "scripts": {
     "clean": "rm -rf dist",
-    "build:js": "esbuild src/index.ts --outdir=dist --format=esm --platform=neutral --sourcemap",
+    "build:js": "esbuild src/index.ts --bundle --outfile=dist/index.js --format=esm --platform=neutral --sourcemap",
     "build:types": "tsc -p tsconfig.types.json",
     "build": "npm run clean && npm run build:js && npm run build:types",
     "test": "node -e \"console.log('No tests yet')\""

@@ -263,7 +263,21 @@ export type Modifier =
   | { type: 'clip'; spec: ClipSpec }
   | { type: 'textPath'; spec: TextPathSpec };
 
-export type ShapeKind = 'circle' | 'rect' | 'ellipse' | 'roundRect' | 'ring' | 'arc' | 'image' | 'path' | 'text' | 'pie' | 'custom' | 'copy';
+export type ShapeKind =
+  | 'circle'
+  | 'rect'
+  | 'ellipse'
+  | 'roundRect'
+  | 'ring'
+  | 'arc'
+  | 'image'
+  | 'path'
+  | 'bezier'
+  | 'compound'
+  | 'text'
+  | 'pie'
+  | 'custom'
+  | 'copy';
 
 export type ShapeGeometry =
   | { kind: 'circle'; radius: number }
@@ -652,6 +666,7 @@ function evaluateBuilder(builder: ShapeBuilder, time: number): ShapeInstance {
   let stroke:
     | {
         color: string;
+        gradient?: GradientSpec;
         width: number;
         cap?: CanvasLineCap;
         join?: CanvasLineJoin;
@@ -663,7 +678,7 @@ function evaluateBuilder(builder: ShapeBuilder, time: number): ShapeInstance {
   let fillMode: FillMode | undefined;
   let shadow: { color: string; blur: number; offsetX: number; offsetY: number } | undefined;
 
-  let geom: { radius?: number; width?: number; height?: number; points?: Vec2[]; closed?: boolean; commands?: BezierCommand[] } = {};
+  let geom: ShapeInstance['geom'] = {};
   let text: ShapeInstance['text'] | undefined;
   let draw: ShapeInstance['draw'] | undefined;
   let trim: ShapeInstance['trim'] | undefined;
@@ -1401,7 +1416,9 @@ function evalNumberSpec(
   return lerp(spec.from, spec.to, t);
 }
 
-function maxAnimEnd(prevEnd: number, specs: Array<NumberAnimSpec | FillSpec | undefined>): number | undefined {
+type AnimEndSpec = NumberAnimSpec | FillSpec | { duration: number; start?: TimeRef; delay?: number; repeatDelay?: number; ease?: EaseSpec; loop?: boolean; keyframes?: { time: number; value: any }[] };
+
+function maxAnimEnd(prevEnd: number, specs: Array<AnimEndSpec | undefined>): number | undefined {
   let max: number | undefined;
   for (const spec of specs) {
     if (!spec || typeof spec === 'string') continue;
