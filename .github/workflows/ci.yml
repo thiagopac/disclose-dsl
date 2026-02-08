@@ -14,13 +14,13 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: disclose-js/package-lock.json
+          cache-dependency-path: disclose-dsl/package-lock.json
       - name: Install
         run: npm install
-        working-directory: disclose-js
+        working-directory: disclose-dsl
       - name: Build
         run: npm run build
-        working-directory: disclose-js
+        working-directory: disclose-dsl
       - name: Test
         run: npm test
-        working-directory: disclose-js
+        working-directory: disclose-dsl

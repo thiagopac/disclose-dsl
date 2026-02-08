@@ -1,9 +1,17 @@
 {
-  "name": "disclose-js",
+  "name": "disclose-dsl",
   "version": "0.1.0",
   "description": "Animation + temporal DSL for scenes and shapes.",
   "license": "MIT",
   "author": "Thiago Pires Alves de Castro",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thiagopac/disclose-dsl.git"
+  },
+  "homepage": "https://github.com/thiagopac/disclose-dsl#readme",
+  "bugs": {
+    "url": "https://github.com/thiagopac/disclose-dsl/issues"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -25,10 +33,13 @@
     "build:js": "esbuild src/index.ts --bundle --outfile=dist/index.js --format=esm --platform=neutral --sourcemap",
     "build:types": "tsc -p tsconfig.types.json",
     "build": "npm run clean && npm run build:js && npm run build:types",
-    "test": "node -e \"console.log('No tests yet')\""
+    "prepublishOnly": "npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "esbuild": "^0.21.5",
-    "typescript": "^5.6.2"
+    "typescript": "^5.6.2",
+    "vitest": "^1.6.0"
   }
 }
