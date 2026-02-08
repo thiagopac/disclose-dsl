@@ -15,7 +15,7 @@ npm install disclose-dsl
 ## Quick Start (Module)
 
 ```ts
-import { Scene, Circle, Rect, Renderer, Timeline } from 'disclose-dsl';
+import { Scene, Circle, Rect, play } from 'disclose-dsl';
 
 const scene = Scene({ duration: 4000 }, (t) => [
   Circle(60)
@@ -32,14 +32,7 @@ const scene = Scene({ duration: 4000 }, (t) => [
 const canvas = document.querySelector('#stage');
 if (!canvas) throw new Error('Canvas not found');
 
-const renderer = new Renderer(canvas, scene);
-const timeline = new Timeline();
-
-const tick = () => {
-  renderer.render(timeline.now());
-  requestAnimationFrame(tick);
-};
-requestAnimationFrame(tick);
+play(canvas, scene);
 ```
 
 `requestAnimationFrame` is the browser's animation loop. We use it to redraw the scene every frame.
@@ -53,8 +46,7 @@ requestAnimationFrame(tick);
     Scene,
     Circle,
     Rect,
-    Renderer,
-    Timeline
+    play
   } from 'https://unpkg.com/disclose-dsl@0.1.0/dist/index.js';
 
   const scene = Scene({ duration: 4000 }, (t) => [
@@ -70,14 +62,7 @@ requestAnimationFrame(tick);
   ]);
 
   const canvas = document.querySelector('#stage');
-  const renderer = new Renderer(canvas, scene);
-  const timeline = new Timeline();
-
-  const tick = () => {
-    renderer.render(timeline.now());
-    requestAnimationFrame(tick);
-  };
-  requestAnimationFrame(tick);
+  play(canvas, scene);
 </script>
 ```
 
@@ -101,17 +86,6 @@ https://cdn.jsdelivr.net/npm/disclose-dsl@0.1.0/dist/index.js
 ```bash
 npm test
 ```
-
-## Release (npm)
-
-Publishing is automated via GitHub Actions. Create a tag like `v0.1.1` and push it:
-
-```bash
-git tag v0.1.1
-git push --tags
-```
-
-The workflow in `.github/workflows/release.yml` will build, test, and publish to npm.
 
 ## Contributing
 

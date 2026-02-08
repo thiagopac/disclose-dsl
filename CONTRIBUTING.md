@@ -9,6 +9,17 @@ Thanks for your interest in contributing.
 3. Make your changes with clear commits.
 4. Open a pull request.
 
+## Release
+
+Publishing is automated via GitHub Actions. Create a tag like `v0.1.1` and push it:
+
+```bash
+git tag v0.1.1
+git push --tags
+```
+
+The workflow in `.github/workflows/release.yml` will build, test, and publish to npm.
+
 ## Branch Naming
 
 Use the pattern:

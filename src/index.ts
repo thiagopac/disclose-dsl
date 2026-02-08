@@ -26,4 +26,5 @@ export * from './dsl/Time.js';
 export * from './dsl/Triangle.js';
 export * from './runtime/Renderer.js';
 export * from './runtime/Timeline.js';
+export * from './runtime/Player.js';
 export * from './core/Diagnostics.js';
