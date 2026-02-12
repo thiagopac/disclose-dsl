@@ -242,6 +242,12 @@ export type MorphSpec = {
 };
 
 export type ClipSpec = ShapeBuilder | ShapeBuilder[];
+export type DistortSpec = {
+  tl?: Vec2;
+  tr?: Vec2;
+  br?: Vec2;
+  bl?: Vec2;
+};
 
 export type Modifier =
   | { type: 'at'; spec: PositionSpec }
@@ -272,7 +278,8 @@ export type Modifier =
   | { type: 'trim'; spec: TrimSpec }
   | { type: 'anchor'; spec: AnchorSpec }
   | { type: 'clip'; spec: ClipSpec }
-  | { type: 'textPath'; spec: TextPathSpec };
+  | { type: 'textPath'; spec: TextPathSpec }
+  | { type: 'distort'; spec: DistortSpec };
 
 export type ShapeKind =
   | 'circle'
@@ -560,6 +567,10 @@ export class ShapeBuilder {
     return this.cloneWith({ type: 'clip', spec: shape });
   }
 
+  distort(spec: DistortSpec): ShapeBuilder {
+    return this.cloneWith({ type: 'distort', spec });
+  }
+
   path(points: Vec2[], closed = true): ShapeBuilder {
     return this.cloneWithGeom({ kind: 'path', points, closed });
   }
@@ -690,6 +701,9 @@ function evaluateBuilder(builder: ShapeBuilder, time: number): ShapeInstance {
   let shadow: { color: string; blur: number; offsetX: number; offsetY: number } | undefined;
 
   let geom: ShapeInstance['geom'] = {};
+  let renderKind: ShapeInstance['kind'] = builder.geom.kind === 'copy' ? 'path' : (
+    builder.geom.kind as ShapeInstance['kind']
+  );
   let text: ShapeInstance['text'] | undefined;
   let draw: ShapeInstance['draw'] | undefined;
   let trim: ShapeInstance['trim'] | undefined;
@@ -1344,6 +1358,48 @@ function evaluateBuilder(builder: ShapeBuilder, time: number): ShapeInstance {
         clip = collected.length > 0 ? collected : undefined;
         break;
       }
+      case 'distort': {
+        const spec = mod.spec;
+        validateDistortSpec(spec);
+        if (builder.geom.kind === 'rect') {
+          const w = geom.width ?? 0;
+          const h = geom.height ?? 0;
+          const points = distortPoints(
+            [
+              { x: -w / 2, y: -h / 2 },
+              { x: w / 2, y: -h / 2 },
+              { x: w / 2, y: h / 2 },
+              { x: -w / 2, y: h / 2 },
+            ],
+            spec
+          );
+          geom.points = points;
+          geom.closed = true;
+          renderKind = 'path';
+        } else if (builder.geom.kind === 'path') {
+          if (geom.points && geom.points.length > 0) {
+            geom.points = distortPoints(geom.points, spec);
+          }
+        } else if (builder.geom.kind === 'compound') {
+          if (geom.paths && geom.paths.length > 0) {
+            const allPoints = geom.paths.flatMap((p) => p.points);
+            const bounds = pointsBounds(allPoints);
+            if (bounds) {
+              geom.paths = geom.paths.map((path) => ({
+                ...path,
+                points: distortPoints(path.points, spec, bounds),
+              }));
+            }
+          }
+        } else {
+          Diagnostics.addOnce(
+            `distort-unsupported:${builder.geom.kind}`,
+            'warn',
+            `distort currently supports rect, path, and compound (received ${builder.geom.kind})`
+          );
+        }
+        break;
+      }
     }
 
     const spec: any = (mod as any).spec;
@@ -1356,32 +1412,7 @@ function evaluateBuilder(builder: ShapeBuilder, time: number): ShapeInstance {
   }
 
   return {
-    kind:
-      builder.geom.kind === 'circle'
-        ? 'circle'
-        : builder.geom.kind === 'rect'
-          ? 'rect'
-          : builder.geom.kind === 'ellipse'
-            ? 'ellipse'
-            : builder.geom.kind === 'roundRect'
-              ? 'roundRect'
-              : builder.geom.kind === 'ring'
-                ? 'ring'
-                : builder.geom.kind === 'arc'
-                  ? 'arc'
-                  : builder.geom.kind === 'image'
-                    ? 'image'
-                  : builder.geom.kind === 'path'
-                    ? 'path'
-                    : builder.geom.kind === 'bezier'
-                      ? 'bezier'
-                    : builder.geom.kind === 'compound'
-                      ? 'compound'
-                    : builder.geom.kind === 'text'
-                      ? 'text'
-                      : builder.geom.kind === 'pie'
-                        ? 'pie'
-                        : 'custom',
+    kind: renderKind,
     geom,
     fill,
     fillSet,
@@ -1399,6 +1430,71 @@ function evaluateBuilder(builder: ShapeBuilder, time: number): ShapeInstance {
     text,
     draw,
   };
+}
+
+function validateDistortSpec(spec: DistortSpec): void {
+  const entries: Array<[string, Vec2 | undefined]> = [
+    ['tl', spec.tl],
+    ['tr', spec.tr],
+    ['br', spec.br],
+    ['bl', spec.bl],
+  ];
+  for (const [key, point] of entries) {
+    if (!point) continue;
+    if (!isFiniteNumber(point.x) || !isFiniteNumber(point.y)) {
+      Diagnostics.addOnce(`distort-${key}:invalid`, 'error', `distort.${key} must be { x: number, y: number }`);
+    }
+  }
+}
+
+function pointsBounds(points: Vec2[]): { minX: number; minY: number; maxX: number; maxY: number } | null {
+  if (!points || points.length === 0) return null;
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (const p of points) {
+    if (p.x < minX) minX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y > maxY) maxY = p.y;
+  }
+  if (!isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY)) return null;
+  return { minX, minY, maxX, maxY };
+}
+
+function distortPoints(
+  points: Vec2[],
+  spec: DistortSpec,
+  forcedBounds?: { minX: number; minY: number; maxX: number; maxY: number }
+): Vec2[] {
+  const bounds = forcedBounds ?? pointsBounds(points);
+  if (!bounds) return points;
+  const w = bounds.maxX - bounds.minX;
+  const h = bounds.maxY - bounds.minY;
+  if (w === 0 || h === 0) return points;
+
+  const tl = { x: bounds.minX + (spec.tl?.x ?? 0), y: bounds.minY + (spec.tl?.y ?? 0) };
+  const tr = { x: bounds.maxX + (spec.tr?.x ?? 0), y: bounds.minY + (spec.tr?.y ?? 0) };
+  const br = { x: bounds.maxX + (spec.br?.x ?? 0), y: bounds.maxY + (spec.br?.y ?? 0) };
+  const bl = { x: bounds.minX + (spec.bl?.x ?? 0), y: bounds.maxY + (spec.bl?.y ?? 0) };
+
+  return points.map((p) => {
+    const u = (p.x - bounds.minX) / w;
+    const v = (p.y - bounds.minY) / h;
+    return {
+      x:
+        (1 - u) * (1 - v) * tl.x +
+        u * (1 - v) * tr.x +
+        u * v * br.x +
+        (1 - u) * v * bl.x,
+      y:
+        (1 - u) * (1 - v) * tl.y +
+        u * (1 - v) * tr.y +
+        u * v * br.y +
+        (1 - u) * v * bl.y,
+    };
+  });
 }
 
 function evalNumberSpec(

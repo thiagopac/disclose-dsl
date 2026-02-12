@@ -4,7 +4,11 @@ Disclose DSL is an experimental animation, transformation, and timing DSL for co
 
 ## Status
 
-Work in progress. The public API is unstable and may change without notice. Documentation and an interactive editor are planned for GitHub Pages.
+Work in progress. The public API is unstable and may change without notice.
+
+## Documentation
+
+https://thiagopac.github.io/disclose-docs/
 
 ## Why Disclose DSL
 
