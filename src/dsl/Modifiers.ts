@@ -1,1 +1,1 @@
-export type { MoveSpec, ScaleSpec, OpacitySpec, FillSpec } from './Shape';
+export type { MoveSpec, ScaleSpec, OpacitySpec, FillSpec, DistortSpec } from './Shape';
